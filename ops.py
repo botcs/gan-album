@@ -13,13 +13,13 @@ import tensorflow as tf
 
 def _weight_variable(shape, dev=0.1, name='W'):
     initial = tf.truncated_normal(stddev=dev, shape=shape)
-    #return tf.get_variable(name=name, initializer=initial)
-    return tf.Variable(initial,)
+    return tf.get_variable(name=name, initializer=initial)
+    #return tf.Variable(initial,)
 
 def _bias_variable(size, name='b'):
     initial = tf.constant(value=0.1, shape=[size])
-    #return tf.get_variable(name=name, initializer=initial)
-    return tf.Variable(initial)
+    return tf.get_variable(name=name, initializer=initial)
+    #return tf.Variable(initial)
 
 def linear(input, out_dim, scope_name='linear', ret_var=False):
     with tf.variable_scope(scope_name) as scope:
@@ -81,3 +81,5 @@ def conv_T(input, kernel_size, depth,
     if ret_var: return out, kernel, bias    
     return out
 
+def lrelu(x, leak=0.2, name="lrelu"):
+    return tf.maximum(x, leak*x)
