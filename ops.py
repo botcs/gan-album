@@ -41,7 +41,7 @@ def conv(input, kernel_size, depth, name='convolution', ret_var=False):
         K = kernel_size
         D = depth
 
-        kernel = _weight_variable([K, K, in_D, D], 'K')
+        kernel = _weight_variable([K, K, in_D, D], dev=0.02, name='K')
         bias = _bias_variable(D)
 
         lin = tf.nn.conv2d(
