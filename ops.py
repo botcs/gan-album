@@ -23,8 +23,8 @@ def _bias_variable(size, name='b'):
 
 def linear(input, out_dim, name='linear', ret_var=False):
     with tf.variable_scope(name) as scope:
-        in_dim = input.get_shape().as_list()[-1]
-        mat_shape = in_dim, out_dim
+        in_shape = input.get_shape().as_list()
+        mat_shape = np.prod(in_shape[1:]), out_dim
         W = _weight_variable(mat_shape)
 
         b = _bias_variable(out_dim)
@@ -45,7 +45,7 @@ def conv(input, kernel_size, depth, name='convolution', ret_var=False):
         bias = _bias_variable(D)
 
         lin = tf.nn.conv2d(
-            input, kernel, strides=[1, 1, 1, 1], padding='SAME')
+            input, kernel, strides=[1, 2, 2, 1], padding='SAME')
         out = tf.add(x=lin, y=bias, name=name)
 
     if ret_var: return out, K, bias
