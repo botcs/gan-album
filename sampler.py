@@ -82,7 +82,7 @@ class DataSampler():
             threads = tf.train.start_queue_runners(coord=coord)
 
             batch = []
-            for n in xrange(N):
+            for n in range(N):
                 image = images.eval()
                 batch.append(image)
                 if verbose: 
