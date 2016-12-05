@@ -108,27 +108,33 @@ with tf.Session() as sess:
     
     tf.global_variables_initializer().run()    
     
-    tf.train.Saver()
+    saver = tf.train.Saver()
     print(time.time() - start_time)
-    start_time=time.time()
+    start_time = time.time()
     
-    
-    for it in range(100):
+    print('TRAINING...')
+    for it in range(20):
+        start_time = time.time()
+        print('Iter:', it+1, 'D <-> G LOSS:  ', end='', flush=True)
         l, _ = sess.run([D_loss, d_optim],
-                        {'G/z:0':z_feed.next_batch(32), 
-                         'D/im:0':y_feed.vanilla_next_batch(32)})
+                        {'G/z:0':z_feed.next_batch(1), 
+                         'D/im:0':y_feed.vanilla_next_batch(1)})
                          
-        print(it, '+++ D\tloss:%4.8f \ttime: %4.2f sec' % (l, time.time() - start_time))
-        start_time=time.time()
+        D_time = time.time() - start_time
+        
+        print('%4.4f\t<->\t' % l, end='', flush=True)
+        
         
         l, _ = sess.run([G_loss, g_optim],
-                        {'G/z:0':z_feed.next_batch(64)})
+                        {'G/z:0':z_feed.next_batch(1)})
                         
-        print(it, 'ooo G\tloss: %4.8f \ttime: %4.2f sec' % (l, time.time() - start_time))
+        G_time = time.time()-start_time-D_time
+        total = time.time()-start_time
+        print('%4.4f  \ttime: %4.2f + %4.2f = %4.2f ' % (l, D_time, G_time, total), flush=True)
         start_time=time.time()
         
-        if it % 5 == 0: 
-            save_path = saver.save(sess, "./checkpoint_{}.chkpt".format(it))
+        if (it+1) % 20 == 0: 
+            save_path = saver.save(sess, "./checkpoint_{}.chkpt".format(it+1))
             print("Model saved in file: %s" % save_path)
         
                  
