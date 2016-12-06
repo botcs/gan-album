@@ -87,7 +87,7 @@ with tf.variable_scope('D') as scope:
 with tf.Session() as sess:
     
     z_feed = sampler.LatentSampler(mean=.5, variance=.1, shape=[100])
-    y_feed = sampler.DataSampler(image_size=32, pre_load=False)
+    y_feed = sampler.DataSampler(image_size=32, pre_load=True)
     
     # Modified code from https://github.com/carpedm20/DCGAN-tensorflow/blob/master/model.py#L100-L102
     D_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(D_real, tf.ones_like(D_real)))
@@ -96,15 +96,30 @@ with tf.Session() as sess:
     D_loss = D_loss_real + D_loss_fake
     G_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(D_fake, tf.ones_like(D_fake)))
     
+
     
     g_vars = [v for v in tf.trainable_variables() if v.name.startswith('G')]
     d_vars = [v for v in tf.trainable_variables() if v.name.startswith('D')]
+
+    D_reg = 0
+    for g_v in g_vars:
+        D_reg += tf.nn.l2_loss(g_v)
     
+    G_reg = 0
+    for d_v in d_vars:
+        G_reg += tf.nn.l2_loss(d_v)
+    
+    #print(D_reg)
+    #print(G_reg)
+    REG_FACTOR = 5e-4
+        
+    D_regloss = D_loss + REG_FACTOR * D_reg
+    G_regloss = G_loss + REG_FACTOR * G_reg
     
     d_optim = tf.train.MomentumOptimizer(0.0002, 0.5) \
-        .minimize(D_loss, var_list=d_vars)
+        .minimize(D_regloss, var_list=d_vars)
     g_optim = tf.train.MomentumOptimizer(0.0002, 0.5) \
-        .minimize(G_loss, var_list=g_vars)
+        .minimize(G_regloss, var_list=g_vars)
     
     tf.global_variables_initializer().run()    
     
@@ -112,26 +127,34 @@ with tf.Session() as sess:
     print(time.time() - start_time)
     start_time = time.time()
     
-    print('TRAINING...')
-    for it in range(20):
+    TRAIN_ITER = 100
+
+    D_PER_ROUND = 2
+    G_PER_ROUND = 3
+
+    D_BATCH = 8
+    G_BATCH = 8
+
+    print('TRAINING...{} x D({}) <-> {} x G({})'.\
+        format(D_PER_ROUND, D_BATCH, G_PER_ROUND, G_BATCH))
+    for it in range(100):
+        print('\n\nROUND:', it+1)
         start_time = time.time()
-        print('Iter:', it+1, 'D <-> G LOSS:  ', end='', flush=True)
-        l, _ = sess.run([D_loss, d_optim],
-                        {'G/z:0':z_feed.next_batch(1), 
-                         'D/im:0':y_feed.vanilla_next_batch(1)})
-                         
-        D_time = time.time() - start_time
-        
-        print('%4.4f\t<->\t' % l, end='', flush=True)
-        
-        
-        l, _ = sess.run([G_loss, g_optim],
-                        {'G/z:0':z_feed.next_batch(1)})
+        for d_it in range(D_PER_ROUND):
+            l, _ = sess.run([D_loss, d_optim],
+                            {'G/z:0':z_feed.next_batch(D_BATCH), 
+                             'D/im:0':y_feed.vanilla_next_batch(D_BATCH)})
+            print('DSICRIMINATOR\t%2d \ttime: \t%4.2f \t+++LOSS: %4.4f'\
+                % (d_it+1, time.time() - start_time, l))
+            start_time = time.time()
+                                 
+        for g_it in range(G_PER_ROUND):
+            l, _ = sess.run([G_loss, g_optim],
+                            {'G/z:0':z_feed.next_batch(G_BATCH)})
+            print('GENERATOR\t%2d \ttime: \t%4.2f \toooLOSS: %4.4f'\
+                % (g_it+1, time.time() - start_time, l))
+            start_time = time.time()
                         
-        G_time = time.time()-start_time-D_time
-        total = time.time()-start_time
-        print('%4.4f  \ttime: %4.2f + %4.2f = %4.2f ' % (l, D_time, G_time, total), flush=True)
-        start_time=time.time()
         
         if (it+1) % 20 == 0: 
             save_path = saver.save(sess, "./checkpoint_{}.chkpt".format(it+1))
